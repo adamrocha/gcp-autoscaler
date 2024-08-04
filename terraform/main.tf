@@ -24,70 +24,15 @@ resource "google_compute_network" "vpc-network" {
   name                    = "vpc-network"
   auto_create_subnetworks = "true"
 }
-/*
-module "vpc" {
-    source  = "terraform-google-modules/network/google"
-    version = "~> 9.1"
-    project_id   = "autoscaler-431401"
-    network_name = google_compute_network.vpc-network.name
-    routing_mode = "GLOBAL"
 
-    subnets = [
-        {
-            subnet_name           = "subnet-01"
-            subnet_ip             = "10.10.10.0/24"
-            subnet_region         = "us-central1"
-        },
-        {
-            subnet_name           = "subnet-02"
-            subnet_ip             = "10.10.20.0/24"
-            subnet_region         = "us-central1"
-            subnet_private_access = "true"
-            subnet_flow_logs      = "true"
-            description           = "This subnet has a description"
-        },
-        {
-            subnet_name               = "subnet-03"
-            subnet_ip                 = "10.10.30.0/24"
-            subnet_region             = "us-central1"
-            subnet_flow_logs          = "true"
-            subnet_flow_logs_interval = "INTERVAL_10_MIN"
-            subnet_flow_logs_sampling = 0.7
-            subnet_flow_logs_metadata = "INCLUDE_ALL_METADATA"
-        }
-    ]
-
-    secondary_ranges = {
-        subnet-01 = [
-            {
-                range_name    = "subnet-01-secondary-01"
-                ip_cidr_range = "192.168.64.0/24"
-            },
-        ]
-
-        subnet-02 = []
-    }
-
-    routes = [
-        {
-            name                   = "egress-internet"
-            description            = "route through IGW to access internet"
-            destination_range      = "0.0.0.0/0"
-            tags                   = "egress-inet"
-            next_hop_internet      = "true"
-        }
-    ]
-}
-*/
 module "firewall_rules" {
   source       = "terraform-google-modules/network/google//modules/firewall-rules"
   project_id   = "autoscaler-431401"
   network_name = google_compute_network.vpc-network.name
 
-  rules = [{
-    name                    = "allow-ssh-ingress"
+  ingress_rules = [{
+    name                    = "ingress-ports"
     description             = null
-    direction               = "INGRESS"
     priority                = null
     destination_ranges      = ["10.0.0.0/8"]
     source_ranges           = ["0.0.0.0/0"]
@@ -97,7 +42,30 @@ module "firewall_rules" {
     target_service_accounts = null
     allow = [{
       protocol = "tcp"
-      ports    = ["22"]
+      ports    = ["22", "80", "443"]
+    }]
+    deny = []
+    log_config = {
+      metadata = "INCLUDE_ALL_METADATA"
+    }
+  }]
+
+  egress_rules = [{
+    name                    = "egress-internet"
+    description             = null
+    priority                = null
+    destination_ranges      = ["10.0.0.0/8"]
+    source_ranges           = ["0.0.0.0/0"]
+    source_tags             = null
+    source_service_accounts = null
+    target_tags             = null
+    target_service_accounts = null
+    allow = [{
+      protocol = "tcp"
+      ports    = ["22", "80", "443"]
+    }]
+    allow = [{
+      protocol = "all"
     }]
     deny = []
     log_config = {
@@ -114,13 +82,6 @@ resource "google_compute_autoscaler" "autoscaler" {
     max_replicas    = 5
     min_replicas    = 1
     cooldown_period = 60
-    /*
-    metric {
-      name                       = "pubsub.googleapis.com/subscription/num_undelivered_messages"
-      filter                     = "resource.type = pubsub_subscription AND resource.label.subscription_id = our-subscription"
-      single_instance_assignment = 65535
-    }
-*/
   }
 }
 
@@ -137,7 +98,7 @@ resource "google_compute_instance_template" "autoscale-template" {
   }
 
   network_interface {
-    network = "default"
+    network = google_compute_network.vpc-network.name
   }
 
   metadata = {
