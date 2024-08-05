@@ -47,56 +47,6 @@ resource "google_compute_firewall" "ingress" {
   }
 }
 
-/*
-module "firewall_rules" {
-  source       = "terraform-google-modules/network/google//modules/firewall-rules"
-  project_id   = "autoscaler-431401"
-  network_name = google_compute_network.vpc-network.name
-
-  ingress_rules = [{
-    name                    = "ingress-ports"
-    description             = null
-    priority                = null
-    destination_ranges      = ["10.0.0.0/8"]
-    source_ranges           = ["0.0.0.0/0"]
-    source_tags             = null
-    source_service_accounts = null
-    target_tags             = null
-    target_service_accounts = null
-    allow = [{
-      protocol = "tcp"
-      ports    = ["22", "80", "443"]
-    }]
-    deny = []
-    log_config = {
-      metadata = "INCLUDE_ALL_METADATA"
-    }
-  }]
-
-  egress_rules = [{
-    name                    = "egress-internet"
-    description             = null
-    priority                = null
-    destination_ranges      = ["10.0.0.0/8"]
-    source_ranges           = ["0.0.0.0/0"]
-    source_tags             = null
-    source_service_accounts = null
-    target_tags             = null
-    target_service_accounts = null
-    allow = [{
-      protocol = "tcp"
-      ports    = ["22", "80", "443"]
-    }]
-    allow = [{
-      protocol = "all"
-    }]
-    deny = []
-    log_config = {
-      metadata = "INCLUDE_ALL_METADATA"
-    }
-  }]
-}
-*/
 resource "google_compute_autoscaler" "autoscaler" {
   name   = "autoscaler"
   target = google_compute_instance_group_manager.group-manager.id
